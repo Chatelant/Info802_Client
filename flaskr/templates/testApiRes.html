@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Test Api Rest</title>
+</head>
+<body>
+<button type="submit" id="btn-op-submit" class="btn btn-primary">Charger</button>
+
+<script>
+    console.log("Lancement Script")
+    const selectForm = document.getElementById("btn-op-submit");
+    selectForm.addEventListener("click", submitSelectForm);
+
+    async function submitSelectForm(event) {
+        const resp = await fetch('http://127.0.0.1:5000/todos');
+        const myJson = await resp.json(); //extract JSON from the http response
+        // do something with myJson
+
+
+        console.log("Clic JS")
+        const response = await fetch('lectureJS', {
+            method: 'POST',
+            body: resp
+        });
+    }
+</script>
+
+</body>
+</html>
