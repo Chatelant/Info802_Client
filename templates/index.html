@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Electric Travel</title>
+</head>
+<body>
+    <h1>Planifier un voyage en véhicule électrique</h1>
+    <h2>Sélectionnez un véhicule : </h2>
+    <!-- liste des véhicules -->
+    <select name="vehicles" id="vehicle-select">
+        <option value="">--Choisissez un modèle--</option>
+    </select>
+
+    <h2>TODO : </h2>
+    <ul>
+        <li>Développez et déployez un service SOAP qui propose une liste de véhicules avec ses
+            caractéristiques (autonomie, temps de chargement)
+        </li>
+        <li>Interrogez le service SOAP</li>
+        </li>
+        <li>Développez et déployez un service REST pour calculer le temps de parcours en fonction
+            du nombre de kilomètres à parcourir et en tenant compte du temps de chargement
+        </li>
+        <li>Interrogez le service REST</li>
+        <li>Interrogez un service REST qui fournit un emplacement de prise de rechargement
+            disponible à proximité de coordonnées GPS passées en paramètre
+        </li>
+        <li>Interrogez un service REST de cartographie pour afficher le trajet du véhicule</li>
+    </ul>
+
+    <script>
+        getListVehicles();
+        // Code pour remplir la liste des véhicules
+        // TODO : ask l'API SOAP ici ou via Python
+        function getListVehicles() {
+            let sel = document.getElementById("vehicle-select");
+
+            let opt = document.createElement("option");
+            opt.value = "2";
+            opt.text = "Option: Value 2";
+
+            sel.add(opt, null);
+        }
+
+    </script>
+</body>
+</html>
