@@ -10,6 +10,9 @@
     <!-- liste des véhicules -->
     <select name="vehicles" id="vehicle-select">
         <option value="">--Choisissez un modèle--</option>
+        {% for option in v_list %}
+            <option value={{option}}>{{option}}</option>
+        {% endfor %}
     </select>
 
     <h2>TODO : </h2>
@@ -30,18 +33,20 @@
     </ul>
 
     <script>
-        getListVehicles();
-        // Code pour remplir la liste des véhicules
-        // TODO : ask l'API SOAP ici ou via Python
-        function getListVehicles() {
-            let sel = document.getElementById("vehicle-select");
-
-            let opt = document.createElement("option");
-            opt.value = "2";
-            opt.text = "Option: Value 2";
-
-            sel.add(opt, null);
-        }
+        {#getListVehicles();#}
+        {#// Code pour remplir la liste des véhicules#}
+        {#// TODO : ask l'API SOAP ici ou via Python#}
+        {#function getListVehicles() {#}
+        {#    let data = '{{ v_list }}';#}
+        {##}
+        {#    let sel = document.getElementById("vehicle-select");#}
+        {##}
+        {#    let opt = document.createElement("nb-" + data);#}
+        {#    opt.value = data;#}
+        {#    opt.text = data;#}
+        {##}
+        {#    sel.add(opt, null);#}
+        {#}#}
 
     </script>
 </body>
