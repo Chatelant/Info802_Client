@@ -30,5 +30,9 @@ def get_car_info():
     return json.dumps(car_info)
 
 
+@app.route("/map")
+def custom_map():
+    return render_template('map.html')
+
 # cars = client.service.get_vehicles()
 # print(cars)

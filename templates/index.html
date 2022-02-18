@@ -23,15 +23,16 @@
     <div id="vehicle-refill"></div>
 </div>
 
+<form action="{{ url_for('custom_map') }}">
+    <input type="submit" value="Voir la carte" />
+</form>
+
 <h2>TODO : </h2>
 <ul>
-    <strike>
-        <li>Développez et déployez un service SOAP qui propose une liste de véhicules avec ses
-            caractéristiques (autonomie, temps de chargement)
-        </li>
-    </strike>
-    <strike><li>Interrogez le service SOAP</li></strike>
-    </li>
+{#    <li>Développez et déployez un service SOAP qui propose une liste de véhicules avec ses#}
+{#        caractéristiques (autonomie, temps de chargement)#}
+{#    </li>#}
+{#    <li>Interrogez le service SOAP</li>#}
     <li>Développez et déployez un service REST pour calculer le temps de parcours en fonction
         du nombre de kilomètres à parcourir et en tenant compte du temps de chargement
     </li>
