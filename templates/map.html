@@ -1,20 +1,58 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <title>Electric Travel : map</title>
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8"/>
+    <title>Google Maps Multiple Markers</title>
+    <script src="http://maps.google.com/maps/api/js?key=AIzaSyAP319Lk4plsdJwM1y_u3snS3xpRvGC5yw"
+            type="text/javascript"></script>
 </head>
-<body>
-    <form action="{{ url_for('home') }}">
-        <input type="submit" value="Retour"/>
-    </form>
-    <div id="map"></div>
+<body onload="initialize()">
 
-    <!-- Async script executes immediately and must be after any DOM elements used in callback. -->
-<script
-      src="https://maps.googleapis.com/maps/api/js?key=AIzaSyA38SjWGtrRjzt-rB0e2yrawCs3KY7oEAY&callback=initMap&v=weekly"
-      async
-    ></script>
+<form onSubmit="return false; // Returning false stops the page from reloading">
+    <label for="addressDepart">Point de départ :</label>
+    <input id="addressDepart" type="text" placeholder="adresse de départ"
+           value="Avenue du Lac du Bourget 73370 Le Bourget-du-Lac"/>
+    <input type="button" value="Chercher" onclick="codeAddress()">
+</form>
+<div id="map" style="width: 500px; height: 400px;"></div>
 
+<script type="text/javascript">
+    let geocoder;
+    let map;
+
+    let addressDepart;
+    let addressArrivee;
+
+    // Initialise la map
+    function initialize() {
+        geocoder = new google.maps.Geocoder();
+        let latlng = new google.maps.LatLng(48.8588335, 2.2768239);
+        let mapOptions = {
+            zoom: 8,
+            center: latlng
+        }
+        map = new google.maps.Map(document.getElementById('map'), mapOptions);
+    }
+
+    // Traduit l'adresse de départ en position lat long
+    function codeAddress() {
+        addressDepart = document.getElementById('addressDepart').value;
+        geocoder.geocode({'address': addressDepart}, function (results, status) {
+            if (status === 'OK') {
+                map.setCenter(results[0].geometry.location);
+                let marker = new google.maps.Marker({
+                    map: map,
+                    position: results[0].geometry.location
+                });
+            } else {
+                alert('Geocode was not successful for the following reason: ' + status);
+            }
+        });
+    }
+
+    // TODO : fonction pour afficher la (les ?) prise de rechargement la plus proche de coordonnées GPS
+
+    // TODO : draw trajet entre point de départ et destination
+</script>
 </body>
 </html>
