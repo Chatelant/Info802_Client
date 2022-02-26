@@ -12,7 +12,7 @@
     <label for="addressDepart">Point de départ :</label>
     <input id="addressDepart" type="text" placeholder="adresse de départ"
            value="Avenue du Lac du Bourget 73370 Le Bourget-du-Lac"/>
-    <input type="button" value="Chercher" onclick="codeAddress()">
+    <input type="button" value="Chercher" onclick="setMarkerDepart()">
 </form>
 <div id="map" style="width: 500px; height: 400px;"></div>
 
@@ -21,7 +21,11 @@
     let map;
 
     let addressDepart;
-    let addressArrivee;
+    let markerDepart;
+    let addressArrive;
+    let markerArrive;
+
+    let rechargeStations = [];
 
     // Initialise la map
     function initialize() {
@@ -32,27 +36,101 @@
             center: latlng
         }
         map = new google.maps.Map(document.getElementById('map'), mapOptions);
+
+        setRechargeStations(); // move to setMarkerDepart
     }
 
     // Traduit l'adresse de départ en position lat long
-    function codeAddress() {
+    async function setMarkerDepart() {
         addressDepart = document.getElementById('addressDepart').value;
-        geocoder.geocode({'address': addressDepart}, function (results, status) {
+        await geocoder.geocode({'address': addressDepart}, function (results, status) {
             if (status === 'OK') {
+                if (markerDepart && markerDepart.setMap) {
+                    markerDepart.setMap(null);
+                }
                 map.setCenter(results[0].geometry.location);
-                let marker = new google.maps.Marker({
+                markerDepart = new google.maps.Marker({
                     map: map,
-                    position: results[0].geometry.location
+                    position: results[0].geometry.location,
+                    title: addressDepart,
+                    animation: google.maps.Animation.DROP
                 });
             } else {
                 alert('Geocode was not successful for the following reason: ' + status);
             }
         });
+
+        // TODO : call fonction pour afficher les prises de rechargement proche
+        setNearbyStation();
+
     }
 
     // TODO : fonction pour afficher la (les ?) prise de rechargement la plus proche de coordonnées GPS
+    function setRechargeStations() {
+        const file = "https://static.data.gouv.fr/resources/fichier-consolide-des-bornes-de-recharge-pour-vehicules-electriques/20220222-073346/consolidation-etalab-schema-irve-v-2.0.2-20220222.csv";
+        let rawFile = new XMLHttpRequest();
+        rawFile.open("GET", file, true);
+        rawFile.onreadystatechange = function () {
+            if (rawFile.readyState === 4) {
+                if (rawFile.status === 200 || rawFile.status === 0) {
+                    let allText = rawFile.responseText;
+                    lines = allText.split("\n");
+                    // NOM : 9
+                    // ADRESSE : 11 test, toto, "abc, cde", "[lat, long]"
+                    // COORDONNEES XY : 13
+                    for (let i = 1; i < lines.length; i++) {
+                        let sanitizedLine = lines[i].replace(/,(?=[^"]*"[^"]*(?:"[^"]*"[^"]*)*$)/g, ";")
+                        let stationInfo = sanitizedLine.split(",");
+                        if (stationInfo.length < 15) continue
+                        let name = stationInfo[9]; // récupère le nom de la station
+                        let [lat, long] = stationInfo[13].replace('"[', '').replace(']"', '').split(';');
+                        rechargeStations.push({
+                            name,
+                            lat: parseFloat(lat),
+                            long: parseFloat(long),
+                        });
+                    }
+                } else {
+                    alert("Erreur '" + rawFile.status + "' lors du téléchargement des stations");
+                }
+            }
+        }
+        rawFile.send(null);
+    }
+
+    function setNearbyStation() {
+        const svgMarker = {
+            path: "M10.453 14.016l6.563-6.609-1.406-1.406-5.156 5.203-2.063-2.109-1.406 1.406zM12 2.016q2.906 0 4.945 2.039t2.039 4.945q0 1.453-0.727 3.328t-1.758 3.516-2.039 3.070-1.711 2.273l-0.75 0.797q-0.281-0.328-0.75-0.867t-1.688-2.156-2.133-3.141-1.664-3.445-0.75-3.375q0-2.906 2.039-4.945t4.945-2.039z",
+            fillColor: "blue",
+            fillOpacity: 0.6,
+            strokeWeight: 0,
+            rotation: 0,
+            scale: 2,
+            anchor: new google.maps.Point(15, 30),
+        };
+
+        let infowindow = new google.maps.InfoWindow();
+        {#for (let i = 0; i < rechargeStations.length; i++) {#}
+        for (let i = 0; i < 10; i++) {
+            const station = rechargeStations[i];
+            let marker = new google.maps.Marker({
+                map: map,
+                position: new google.maps.LatLng(station.lat, station.long),
+                title: station.name,
+                icon: svgMarker,
+            });
+
+            google.maps.event.addListener(marker, 'click', (function (marker, i) {
+                return function () {
+                    infowindow.setContent(station.name);
+                    infowindow.open(map, marker);
+                }
+            })(marker, i));
+        }
+    }
 
     // TODO : draw trajet entre point de départ et destination
+
 </script>
 </body>
 </html>
