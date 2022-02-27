@@ -31,11 +31,6 @@ def get_car_info():
     return json.dumps(car_info)
 
 
-@app.route("/map")
-def custom_map():
-    return render_template('map.html')
-
-
 if __name__ == '__main__':
     cars = client.service.get_vehicles()
     app.run(debug=True, use_debugger=False, use_reloader=False)

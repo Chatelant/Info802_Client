@@ -2,11 +2,52 @@
 let params = {
     geocoder: "",
     map: "",
+    car: 0,
     roadDisplay: "",
     roadService: "",
+    start: "",
+    end: "",
     markers: [],
 }
 
+// JAVASCRIPT POUR LA DROPDOWN
+document.getElementById("vehicle-select").onchange = selectCar;
+selectCar();
+
+// Affiche les informations du véhicule sélectionné
+async function selectCar() {
+    let dropdown = document.getElementById("vehicle-select");
+    let car_value = dropdown.options[dropdown.selectedIndex].value;
+
+    if (car_value !== "0") {
+        // récupération du nom de la voiture sélectionnée
+        const url = 'car_selected'
+        const car_selected = dropdown.options[dropdown.selectedIndex].text;
+
+        // envoie du nom de la voiture au python
+        const response = await fetch(url, {
+            method: "POST",
+            body: car_selected
+        });
+
+        // récupération des informations de la voiture
+        const resp = await response.json();
+        const info = JSON.parse(JSON.stringify(resp));
+
+        // format des informations : "brand;model;autonomy;refill"
+        let data = info.split(";");
+        params.car = {
+            brand: data[0],
+            model: data[1],
+            autonomy: parseFloat(data[2]),
+            refill: parseFloat(data[3]),
+        }
+    }
+
+    console.log(params.car);
+}
+
+// JAVASCRIPT POUR LA MAP
 // Initialise la map
 function initialize() {
     params.geocoder = new google.maps.Geocoder();
@@ -31,30 +72,26 @@ async function getCoordinates(address) {
     return coordinates;
 }
 
-// TODO : draw trajet entre point de départ et destination
+// Calcul et trace un trajet entre deux points
 async function setRoute() {
+    // Reset les paramètres de la carte
     if (params.markers !== []) params.markers = []
     if (params.roadDisplay) params.roadDisplay.setMap(null);
 
+    // Trouve la position du point de départ en LatLng
     let addressDepart = document.getElementById('addressDepart').value;
-    let markerDepart = await getCoordinates(addressDepart);
-    params.markers.push(markerDepart);
+    params.start = await getCoordinates(addressDepart);
 
+    // Trouve la position du point d'arrivée en LatLng
     let addressArrivee = document.getElementById('addressArrivee').value;
-    let markerArrivee = await getCoordinates(addressArrivee);
-    params.markers.push(markerArrivee);
+    params.end = await getCoordinates(addressArrivee);
 
-    // Affiche les stations de rechargement à proximité
-    // if (markersStations[0] && markersStations[0].setMap) {
-    //     for (let i = 0; i < markersStations.length; i++) {
-    //         markersStations[i].setMap(null);
-    //     }
-    // }
-    // setNearbyStation();
+    // TODO : fonction qui retourne toutes les stations où s'arrêter pendant le voyage
+    // setStationOnRoad();
 
-    // TODO : à clean
-    let start = new google.maps.LatLng(markerDepart);
-    let end = new google.maps.LatLng(markerArrivee);
+    // Setup du trajet entre les deux points
+    let start = new google.maps.LatLng(params.start);
+    let end = new google.maps.LatLng(params.end);
     let request = {
         origin: start,
         destination: end,
@@ -70,6 +107,7 @@ async function setRoute() {
         mapTypeId: google.maps.MapTypeId.SATELLITE
     };
 
+    // Affichage sur la carte
     params.roadDisplay.setMap(params.map);
     params.roadService.route(request, function (result, status) {
         if (status === google.maps.DirectionsStatus.OK) {
@@ -78,42 +116,79 @@ async function setRoute() {
             alert("couldn't get directions:" + status);
         }
     });
+
+    console.log(params.roadDisplay);
+}
+
+function setPolygon(lat, lng, dist) {
+    let distLat = dist / 111; // distance en ° de lat entre le point de départ et la station la plus loin
+    let distLng = dist / (111 * Math.cos(distLat)); // distance en ° de lat entre le point de départ et la station la plus loin
+
+    let botleft = "(" + (lat + distLat).toString() + ", " + (lng - distLng).toString() + ")";
+    let botright = "(" + (lat + distLat).toString() + ", " + (lng + distLng).toString() + ")";
+    let top = "(" + (lat - distLat).toString() + ", " + lng.toString() + ")";
+
+    // triangulation (lat, lng) autour du marqueur de départ
+    return botleft + ", " + botright + ", " + top;
 }
 
 // Place les stations de rechargement proche du point de départ
 // TODO : modifier pour donner les stations par lesquelles il peut passer pendant son trajet
-function setNearbyStation() {
-    let rows = 15; // nombre de résultat de la requête API
+function setStationOnRoad() {
+    let rows = 20; // nombre de résultat souhaité
+    // let km = params.car.autonomy; // kilomètres parcourables
+    let km = 30;
+    let rayon = 30; // rayon de recherche de station sur la route
 
     // 1° de lat = 111 km
     // 1° de long = 111 * cos(lat) km
-    let km = 30; // kilomètres parcourables, TODO: remplacer par l'autonomie du véhicule calculé par l'autre api
     let distLat = km / 111; // distance en ° de lat entre le point de départ et la station la plus loin
     let distLng = km / (111 * Math.cos(distLat)); // distance en ° de lat entre le point de départ et la station la plus loin
 
-    // set Polygon pour trouver les stations les plus proches
-    let botleft = "(" + (markerDepart.position.lat() + distLat).toString() + ", " + (markerDepart.position.lng() - distLng).toString() + ")";
-    let botright = "(" + (markerDepart.position.lat() + distLat).toString() + ", " + (markerDepart.position.lng() + distLng).toString() + ")";
-    let top = "(" + (markerDepart.position.lat() - distLat).toString() + ", " + markerDepart.position.lng().toString() + ")";
+    let newLat = params.start.lat();
+    let newLng = params.start.lng();
+    let stop = false;
+    let i = 0;
 
-    let polygon = botleft + ", " + botright + ", " + top; // triangulation (lat, lng) autour du marqueur de départ
+    while (stop !== true) {
+        if (params.start.lat() <= params.end.lat()) {
+            newLat += distLat;
+        } else {
+            newLat -= distLat;
+        }
 
-    // Call de l'API d'opendata pour récupérer les stations les plus proches
-    let url = 'https://opendata.reseaux-energies.fr/api/records/1.0/search/?dataset=bornes-irve&q=&rows='
-        + rows
-        + '&facet=region&geofilter.polygon='
-        + polygon;
+        if (params.start.lng() <= params.end.lng()) {
+            newLng += distLng;
+        } else {
+            newLng -= distLng;
+        }
 
-    fetch(url)
-        .then(res => res.json())
-        .then(function (out) {
-                // On regarde tous les résultats du JSON
-                for (let i = 0; i < out.records.length; i++) {
-                    let station = out.records[i];
-                    drawMarkerStation(station.fields.ad_station, station.fields.ylatitude, station.fields.xlongitude);
-                }
-            }
-        ).catch(err => console.log("Aucune station de rechargement à proximité : " + err));
+        // set Polygon pour trouver une station sur le chemin
+        let polygon = setPolygon(newLat, newLng, rayon);
+
+        // Call de l'API d'opendata pour récupérer les stations les plus proches
+        // let url = 'https://opendata.reseaux-energies.fr/api/records/1.0/search/?dataset=bornes-irve&q=&rows='
+        //     + rows
+        //     + '&facet=region&geofilter.polygon='
+        //     + polygon;
+        //
+        // fetch(url)
+        //     .then(res => res.json())
+        //     .then(function (out) {
+        //             // On regarde tous les résultats du JSON
+        //             console.log(out.records);
+        //             for (let i = 0; i < out.records.length; i++) {
+        //                 let station = out.records[i];
+        //                 drawMarkerStation(station.fields.ad_station, station.fields.ylatitude, station.fields.xlongitude);
+        //             }
+        //         }
+        //     ).catch(err => console.log("Aucune station de rechargement à proximité : " + err));
+
+        drawMarkerStation("Station", newLat, newLng);
+
+        i += 1;
+        if (i === 20) { stop = true; }
+    }
 }
 
 // Dessine un marqueur de station de rechargement
@@ -130,7 +205,7 @@ function drawMarkerStation(name, lat, lng) {
 
     let infowindow = new google.maps.InfoWindow();
     let marker = new google.maps.Marker({
-        map: map,
+        map: params.map,
         position: new google.maps.LatLng(lat, lng),
         title: name,
         icon: svgMarker,
@@ -139,11 +214,11 @@ function drawMarkerStation(name, lat, lng) {
     google.maps.event.addListener(marker, 'click', (function (marker) {
         return function () {
             infowindow.setContent(name);
-            infowindow.open(map, marker);
+            infowindow.open(params.map, marker);
         }
     })(marker));
 
-    markersStations.push(marker);
+    params.markers.push(marker);
 }
 
 // ----------

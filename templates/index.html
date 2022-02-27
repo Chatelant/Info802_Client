@@ -6,39 +6,30 @@
 
     <script src="http://maps.google.com/maps/api/js?key=AIzaSyAP319Lk4plsdJwM1y_u3snS3xpRvGC5yw"
             type="text/javascript"></script>
-    <script src="{{ url_for('static', filename="js/map.js") }}"></script>
 </head>
 
 <body onload="initialize()">
 
     <h1>Planifier un voyage en véhicule électrique</h1>
-    <h2>Sélectionnez un véhicule : </h2>
-    <!-- liste des véhicules -->
-    <select name="vehicles" id="vehicle-select">
-        <option value="0" selected="selected">--Choisissez un modèle--</option>
-        {% for option in v_list %}
-            <option value={{ option }}>{{ option }}</option>
-        {% endfor %}
-    </select>
-
-    <div id="vehicle-info">
-        <h3 id="vehicle-name"></h3>
-        <div id="vehicle-brand"></div>
-        <div id="vehicle-model"></div>
-        <div id="vehicle-autonomy"></div>
-        <div id="vehicle-refill"></div>
-    </div>
-
-    <hr/>
 
     <form onSubmit="return false; // Returning false stops the page from reloading">
         <div>
+            <label for="vehicle-select">Véhicule : </label>
+            <select name="vehicles" id="vehicle-select" required>
+                <option value="0" selected="selected">--Choisissez un modèle--</option>
+                {% for option in v_list %}
+                    <option value={{ option }}>{{ option }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <hr/>
+        <div>
             <label for="addressDepart">Départ :</label>
-            <input id="addressDepart" type="text" placeholder="adresse de départ" value="Rouen"/>
+            <input id="addressDepart" type="text" placeholder="adresse de départ" value="Rouen" required/>
         </div>
         <div>
             <label for="addressArrivee">Destination :</label>
-            <input id="addressArrivee" type="text" placeholder="adresse de destination" value="Annecy"/>
+            <input id="addressArrivee" type="text" placeholder="adresse de destination" value="Annecy" required/>
         </div>
         <div>
             <input type="button" value="Chercher" onclick="setRoute()">
@@ -46,6 +37,6 @@
     </form>
     <div id="map" style="width: 1200px; height: 700px;"></div>
 
-    <script src="{{ url_for('static', filename="js/vehiclelist.js") }}"></script>
+    <script src="{{ url_for('static', filename="js/index.js") }}"></script>
 </body>
 </html>
