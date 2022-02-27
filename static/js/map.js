@@ -1,14 +1,7 @@
 // TODO : remplacer les constantes par des variables passées en paramètre
-
 let geocoder;
 let map;
-
-let addressDepart;
-let markerDepart;
-let addressArrive;
-let markerArrive;
-
-let markersStations = [];
+let markers = [];
 
 // Initialise la map
 function initialize() {
@@ -20,74 +13,62 @@ function initialize() {
     }
     map = new google.maps.Map(document.getElementById('map'), mapOptions);
 
-    // setRechargeStations();
 }
 
-// Positionne le marqueur de départ et les stations environnantes
-async function setMarkerDepart() {
-    addressDepart = document.getElementById('addressDepart').value;
-    await geocoder.geocode({'address': addressDepart}, function (results, status) {
+// Récupère les coordonnées LatLng à partir d'une adresse
+async function getCoordinates(address) {
+    let coordinates;
+    await geocoder.geocode({'address': address}, function (results, status) {
         if (status === 'OK') {
-            // Place le marqueur de départ
-            if (markerDepart && markerDepart.setMap) {
-                markerDepart.setMap(null);
-            }
-            map.setCenter(results[0].geometry.location);
-            markerDepart = new google.maps.Marker({
-                map: map,
-                position: results[0].geometry.location,
-                title: addressDepart,
-                animation: google.maps.Animation.DROP
-            });
-            let infowindow = new google.maps.InfoWindow();
-            google.maps.event.addListener(markerDepart, 'click', (function (marker) {
-                return function () {
-                    infowindow.setContent(addressDepart);
-                    infowindow.open(map, markerDepart);
-                }
-            })(markerDepart));
+            coordinates = results[0].geometry.location
         } else {
             alert('Geocode was not successful for the following reason: ' + status);
         }
     });
-
-    // Affiche les stations de rechargement à proximité
-    if (markersStations[0] && markersStations[0].setMap) {
-        for (let i = 0; i < markersStations.length; i++) {
-            markersStations[i].setMap(null);
-        }
-    }
-    setNearbyStation();
+    return coordinates;
 }
 
-// Essai pour récupérer les stations à partir d'un fichier CSV
-function setRechargeStations() {
-    const file = "https://static.data.gouv.fr/resources/fichier-consolide-des-bornes-de-recharge-pour-vehicules-electriques/20220222-073346/consolidation-etalab-schema-irve-v-2.0.2-20220222.csv";
-    let rawFile = new XMLHttpRequest();
-    rawFile.open("GET", file, true);
-    rawFile.onreadystatechange = function () {
-        if (rawFile.readyState === 4) {
-            if (rawFile.status === 200 || rawFile.status === 0) {
-                let allText = rawFile.responseText;
-                lines = allText.split("\n");
-                for (let i = 1; i < lines.length; i++) {
-                    let sanitizedLine = lines[i].replace(/,(?=[^"]*"[^"]*(?:"[^"]*"[^"]*)*$)/g, ";")
-                    let stationInfo = sanitizedLine.split(",");
-                    if (stationInfo.length < 15) continue
-                    let name = stationInfo[9]; // récupère le nom de la station
-                    let [lat, long] = stationInfo[13].replace('"[', '').replace(']"', '').split(';');
-                    rechargeStations.push({
-                        name,
-                        lat: parseFloat(lat),
-                        long: parseFloat(long),
-                    });
-                }
-            } else {
-                alert("Erreur '" + rawFile.status + "' lors du téléchargement des stations");
-            }
+// TODO : draw trajet entre point de départ et destination
+async function setRoute() {
+    let addressDepart = document.getElementById('addressDepart').value;
+    let markerDepart = await getCoordinates(addressDepart);
+
+    let addressArrivee = document.getElementById('addressArrivee').value;
+    let markerArrivee = await getCoordinates(addressArrivee);
+
+    // Affiche les stations de rechargement à proximité
+    // if (markersStations[0] && markersStations[0].setMap) {
+    //     for (let i = 0; i < markersStations.length; i++) {
+    //         markersStations[i].setMap(null);
+    //     }
+    // }
+    // setNearbyStation();
+
+    // TODO : à clean
+    let start = new google.maps.LatLng(markerDepart);
+    let end = new google.maps.LatLng(markerArrivee);
+    let request = {
+        origin: start,
+        destination: end,
+        travelMode: google.maps.TravelMode.DRIVING
+    };
+    let directionsService = new google.maps.DirectionsService();
+    let directionsDisplay = new google.maps.DirectionsRenderer();
+    let Center = new google.maps.LatLng(18.210885, -67.140884);
+    let properties = {
+        center: Center,
+        zoom: 20,
+        mapTypeId: google.maps.MapTypeId.SATELLITE
+    };
+
+    directionsDisplay.setMap(map);
+    directionsService.route(request, function (result, status) {
+        if (status === google.maps.DirectionsStatus.OK) {
+            directionsDisplay.setDirections(result);
+        } else {
+            alert("couldn't get directions:" + status);
         }
-    }
-    rawFile.send(null);
+    });
 }
 
 // Place les stations de rechargement proche du point de départ
@@ -156,4 +137,58 @@ function drawMarkerStation(name, lat, lng) {
     markersStations.push(marker);
 }
 
-// TODO : draw trajet entre point de départ et destination
+// ----------
+// Essai pour récupérer les stations à partir d'un fichier CSV
+// function setRechargeStations() {
+//     const file = "https://static.data.gouv.fr/resources/fichier-consolide-des-bornes-de-recharge-pour-vehicules-electriques/20220222-073346/consolidation-etalab-schema-irve-v-2.0.2-20220222.csv";
+//     let rawFile = new XMLHttpRequest();
+//     rawFile.open("GET", file, true);
+//     rawFile.onreadystatechange = function () {
+//         if (rawFile.readyState === 4) {
+//             if (rawFile.status === 200 || rawFile.status === 0) {
+//                 let allText = rawFile.responseText;
+//                 lines = allText.split("\n");
+//                 for (let i = 1; i < lines.length; i++) {
+//                     let sanitizedLine = lines[i].replace(/,(?=[^"]*"[^"]*(?:"[^"]*"[^"]*)*$)/g, ";")
+//                     let stationInfo = sanitizedLine.split(",");
+//                     if (stationInfo.length < 15) continue
+//                     let name = stationInfo[9]; // récupère le nom de la station
+//                     let [lat, long] = stationInfo[13].replace('"[', '').replace(']"', '').split(';');
+//                     rechargeStations.push({
+//                         name,
+//                         lat: parseFloat(lat),
+//                         long: parseFloat(long),
+//                     });
+//                 }
+//             } else {
+//                 alert("Erreur '" + rawFile.status + "' lors du téléchargement des stations");
+//             }
+//         }
+//     }
+//     rawFile.send(null);
+// }
+// Old function pour mettre des pin
+// await geocoder.geocode({'address': addressArrivee}, function (results, status) {
+//     if (status === 'OK') {
+//         // Place le marqueur de départ
+//         if (markerArrivee && markerArrivee.setMap) {
+//             markerArrivee.setMap(null);
+//         }
+//         map.setCenter(results[0].geometry.location);
+//         markerArrivee = new google.maps.Marker({
+//             map: map,
+//             position: results[0].geometry.location,
+//             title: addressArrivee,
+//             animation: google.maps.Animation.DROP
+//         });
+//         let infowindow = new google.maps.InfoWindow();
+//         google.maps.event.addListener(markerArrivee, 'click', (function (marker) {
+//             return function () {
+//                 infowindow.setContent(addressArrivee);
+//                 infowindow.open(map, markerArrivee);
+//             }
+//         })(markerArrivee));
+//     } else {
+//         alert('Geocode was not successful for the following reason: ' + status);
+//     }
+// });

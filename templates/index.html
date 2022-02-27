@@ -1,105 +1,51 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8"/>
     <title>Electric Travel</title>
+
+    <script src="http://maps.google.com/maps/api/js?key=AIzaSyAP319Lk4plsdJwM1y_u3snS3xpRvGC5yw"
+            type="text/javascript"></script>
+    <script src="{{ url_for('static', filename="js/map.js") }}"></script>
 </head>
-<body>
-<h1>Planifier un voyage en véhicule électrique</h1>
-<h2>Sélectionnez un véhicule : </h2>
-<!-- liste des véhicules -->
-<select name="vehicles" id="vehicle-select">
-    <option value="0" selected="selected">--Choisissez un modèle--</option>
-    {% for option in v_list %}
-        <option value={{ option }}>{{ option }}</option>
-    {% endfor %}
-</select>
 
-<div id="vehicle-info">
-    <h3 id="vehicle-name"></h3>
-    <div id="vehicle-brand"></div>
-    <div id="vehicle-model"></div>
-    <div id="vehicle-autonomy"></div>
-    <div id="vehicle-refill"></div>
-</div>
+<body onload="initialize()">
 
-<form action="{{ url_for('custom_map') }}">
-    <input type="submit" value="Voir la carte" />
-</form>
+    <h1>Planifier un voyage en véhicule électrique</h1>
+    <h2>Sélectionnez un véhicule : </h2>
+    <!-- liste des véhicules -->
+    <select name="vehicles" id="vehicle-select">
+        <option value="0" selected="selected">--Choisissez un modèle--</option>
+        {% for option in v_list %}
+            <option value={{ option }}>{{ option }}</option>
+        {% endfor %}
+    </select>
 
-<h2>TODO : </h2>
-<ul>
-{#    <li>Développez et déployez un service SOAP qui propose une liste de véhicules avec ses#}
-{#        caractéristiques (autonomie, temps de chargement)#}
-{#    </li>#}
-{#    <li>Interrogez le service SOAP</li>#}
-    <li>Développez et déployez un service REST pour calculer le temps de parcours en fonction
-        du nombre de kilomètres à parcourir et en tenant compte du temps de chargement
-    </li>
-    <li>Interrogez le service REST</li>
-    <li>Interrogez un service REST qui fournit un emplacement de prise de rechargement
-        disponible à proximité de coordonnées GPS passées en paramètre
-    </li>
-    <li>Interrogez un service REST de cartographie pour afficher le trajet du véhicule</li>
-</ul>
+    <div id="vehicle-info">
+        <h3 id="vehicle-name"></h3>
+        <div id="vehicle-brand"></div>
+        <div id="vehicle-model"></div>
+        <div id="vehicle-autonomy"></div>
+        <div id="vehicle-refill"></div>
+    </div>
 
-<script>
-    let dropdown = document.getElementById("vehicle-select")
+    <hr/>
 
-    // Affiche les informations du véhicule sélectionné
-    async function show() {
-        let car_value = dropdown.options[dropdown.selectedIndex].value;
+    <form onSubmit="return false; // Returning false stops the page from reloading">
+        <div>
+            <label for="addressDepart">Départ :</label>
+            <input id="addressDepart" type="text" placeholder="adresse de départ" value="Dijon"/>
+        </div>
+        <div>
+            <label for="addressArrivee">Destination :</label>
+            <input id="addressArrivee" type="text" placeholder="adresse de destination" value="Lyon"/>
+        </div>
+        <div>
+            <input type="button" value="Chercher" onclick="setRoute()">
+        </div>
+    </form>
+    <div id="map" style="width: 1200px; height: 700px;"></div>
 
-        if (car_value !== "0") {
-            // récupération du nom de la voiture sélectionnée
-            const url = 'car_selected'
-            const car_selected = dropdown.options[dropdown.selectedIndex].text;
-
-            // envoie du nom de la voiture au python
-            const response = await fetch(url, {
-                method: "POST",
-                body: car_selected
-            });
-
-            // récupération des informations de la voiture
-            const resp = await response.json();
-            const info = JSON.parse(JSON.stringify(resp));
-
-            // format des informations : "brand;model;autonomy;refill"
-            const car_infos = info.split(";");
-
-            // affichage des informations de la voiture
-            let car_name = document.getElementById("vehicle-name")
-            let car_brand = document.getElementById("vehicle-brand")
-            let car_model = document.getElementById("vehicle-model")
-            let car_autonomy = document.getElementById("vehicle-autonomy")
-            let car_refill = document.getElementById("vehicle-refill")
-
-            car_name.textContent = car_selected
-            car_brand.textContent = "Marque : " + car_infos[0]
-            car_model.textContent = "Modèle : " + car_infos[1]
-            car_autonomy.textContent = "Autonomie : " + car_infos[2] + " km"
-            car_refill.textContent = "Rechargement : " + car_infos[3] + " h"
-        } else {
-            // si aucune voiture n'est sélectionnée
-            // on efface les affichages
-            let car_name = document.getElementById("vehicle-name")
-            let car_brand = document.getElementById("vehicle-brand")
-            let car_model = document.getElementById("vehicle-model")
-            let car_autonomy = document.getElementById("vehicle-autonomy")
-            let car_refill = document.getElementById("vehicle-refill")
-
-            car_name.textContent = ""
-            car_brand.textContent = ""
-            car_model.textContent = ""
-            car_autonomy.textContent = ""
-            car_refill.textContent = ""
-        }
-    }
-
-    dropdown.onchange = show;
-    show();
-
-</script>
+    <script src="{{ url_for('static', filename="js/vehiclelist.js") }}"></script>
 </body>
 </html>
