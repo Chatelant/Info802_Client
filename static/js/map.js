@@ -1,24 +1,27 @@
-// TODO : remplacer les constantes par des variables passées en paramètre
-let geocoder;
-let map;
-let markers = [];
+// paramètres de l'application
+let params = {
+    geocoder: "",
+    map: "",
+    roadDisplay: "",
+    roadService: "",
+    markers: [],
+}
 
 // Initialise la map
 function initialize() {
-    geocoder = new google.maps.Geocoder();
+    params.geocoder = new google.maps.Geocoder();
     let latlng = new google.maps.LatLng(48.8588335, 2.2768239);
     let mapOptions = {
         zoom: 10,
         center: latlng
     }
-    map = new google.maps.Map(document.getElementById('map'), mapOptions);
-
+    params.map = new google.maps.Map(document.getElementById('map'), mapOptions);
 }
 
 // Récupère les coordonnées LatLng à partir d'une adresse
 async function getCoordinates(address) {
     let coordinates;
-    await geocoder.geocode({'address': address}, function (results, status) {
+    await params.geocoder.geocode({'address': address}, function (results, status) {
         if (status === 'OK') {
             coordinates = results[0].geometry.location
         } else {
@@ -30,11 +33,16 @@ async function getCoordinates(address) {
 
 // TODO : draw trajet entre point de départ et destination
 async function setRoute() {
+    if (params.markers !== []) params.markers = []
+    if (params.roadDisplay) params.roadDisplay.setMap(null);
+
     let addressDepart = document.getElementById('addressDepart').value;
     let markerDepart = await getCoordinates(addressDepart);
+    params.markers.push(markerDepart);
 
     let addressArrivee = document.getElementById('addressArrivee').value;
     let markerArrivee = await getCoordinates(addressArrivee);
+    params.markers.push(markerArrivee);
 
     // Affiche les stations de rechargement à proximité
     // if (markersStations[0] && markersStations[0].setMap) {
@@ -52,8 +60,9 @@ async function setRoute() {
         destination: end,
         travelMode: google.maps.TravelMode.DRIVING
     };
-    let directionsService = new google.maps.DirectionsService();
-    let directionsDisplay = new google.maps.DirectionsRenderer();
+
+    params.roadService = new google.maps.DirectionsService();
+    params.roadDisplay = new google.maps.DirectionsRenderer();
     let Center = new google.maps.LatLng(18.210885, -67.140884);
     let properties = {
         center: Center,
@@ -61,10 +70,10 @@ async function setRoute() {
         mapTypeId: google.maps.MapTypeId.SATELLITE
     };
 
-    directionsDisplay.setMap(map);
-    directionsService.route(request, function (result, status) {
+    params.roadDisplay.setMap(params.map);
+    params.roadService.route(request, function (result, status) {
         if (status === google.maps.DirectionsStatus.OK) {
-            directionsDisplay.setDirections(result);
+            params.roadDisplay.setDirections(result);
         } else {
             alert("couldn't get directions:" + status);
         }
