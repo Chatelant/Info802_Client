@@ -10,6 +10,7 @@ app = Flask(__name__)
 # Connexion au service SOAP
 # TODO : changer l'URL
 transport = zeep.Transport(cache=None)
+# client = zeep.Client("https://boiling-sea-49331.herokuapp.com/?wsdl", transport=transport)
 client = zeep.Client("https://info802-service-soap.herokuapp.com/?wsdl", transport=transport)
 
 
