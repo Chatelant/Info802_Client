@@ -9,6 +9,8 @@ let params = {
     start: "",
     end: "",
     stations: [],
+    travelTime: 0,
+    totalDist: 0,
 }
 
 // JAVASCRIPT POUR LA DROPDOWN
@@ -115,6 +117,7 @@ async function setRoute() {
             mapTypeId: google.maps.MapTypeId.SATELLITE
         };
     }
+    displayTravelTime();
 }
 
 // Récupère les coordonnées LatLng à partir d'une adresse
@@ -143,6 +146,8 @@ async function calculTrajet(request) {
             endLocation = new Object();
             params.roadDisplay.setDirections(response);
             let legs = response.routes[0].legs;
+            params.travelTime = 0;
+            params.totalDist = 0;
             for (let i = 0; i < legs.length; i++) {
                 if (i === 0) {
                     startLocation.latlng = legs[i].start_location;
@@ -158,6 +163,8 @@ async function calculTrajet(request) {
                         bounds.extend(nextSegment[k]);
                     }
                 }
+                params.travelTime += legs[i].duration.value;
+                params.totalDist += legs[i].distance.value;
             }
         } else {
             alert("directions response " + status);
@@ -278,6 +285,21 @@ function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
 // Conversion degré à radiant
 function deg2rad(deg) {
     return deg * (Math.PI / 180)
+}
+
+function displayTravelTime() {
+    let res = fetch("https://info802-service-rest.herokuapp.com/travelTime?" +
+        "autonomy=" + params.car.autonomy.toString() +
+        "&reload_time=" + params.car.refill.toString() +
+        "&km=" + Math.floor(params.totalDist / 1000).toString() +
+        "&travel_time=" + Math.floor(params.travelTime / 60).toString())
+        .then(r => r.json())
+        .then(function (r) {
+            let hours = Math.floor(r["minutes"] / 60);
+            let minuts = r["minutes"] % 60;
+            let travelTime = document.getElementById("travelTime");
+            travelTime.innerText = "Temps de trajet : " + hours.toString() + "h" + minuts.toString();
+        });
 }
 
 // === A method which returns a google.maps.LatLng of a point a given distance along the path ===
