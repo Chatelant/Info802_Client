@@ -9,6 +9,7 @@ let params = {
     start: "",
     end: "",
     stations: [],
+    travelTime: 0
 }
 
 // JAVASCRIPT POUR LA DROPDOWN
@@ -213,7 +214,10 @@ async function setRoute() {
             origin: new google.maps.LatLng(params.start),
             waypoints: params.stations,
             destination: new google.maps.LatLng(params.end),
-            travelMode: google.maps.TravelMode.DRIVING
+            travelMode: google.maps.TravelMode.DRIVING,
+            drivingOptions: {
+                departureTime: new Date(Date.now())
+            }
         };
 
         params.roadService = new google.maps.DirectionsService();
@@ -238,6 +242,7 @@ async function setRoute() {
                 // For each route, display summary information.
                 // let path = response.routes[0].overview_path;
                 let legs = response.routes[0].legs;
+                params.travelTime = 0;
                 for (let i = 0; i < legs.length; i++) {
                     if (i === 0) {
                         startLocation.latlng = legs[i].start_location;
@@ -246,6 +251,7 @@ async function setRoute() {
                     endLocation.latlng = legs[i].end_location;
                     endLocation.address = legs[i].end_address;
                     let steps = legs[i].steps;
+                    params.travelTime += legs[i].duration.value;
                     for (let j = 0; j < steps.length; j++) {
                         let nextSegment = steps[j].path;
                         for (let k = 0; k < nextSegment.length; k++) {
@@ -254,6 +260,8 @@ async function setRoute() {
                         }
                     }
                 }
+                console.log("TravelTime (setTrajet) : " + params.travelTime + " secondes");
+                userAction();
                 params.polyline.setMap(params.map);
             } else {
                 alert("directions response " + status);
@@ -398,3 +406,40 @@ async function setStationOnRoad(lat, lng, rayon) {
 //         alert('Geocode was not successful for the following reason: ' + status);
 //     }
 // });
+
+// async function userAction() {
+//     let url = 'https://info802-service-rest.herokuapp.com/travelTime?km=300&autonomy=150&reload_time=60'
+//     await fetch(url)
+//         .then(res => res.json())
+//         .then(function (out) {
+//                 console.log(out)
+//             }
+//         ).catch(err => function (err) {
+//             console.log(err)
+//         });
+//}
+// Example POST method implementation:
+async function userAction() {
+    let url = 'https://info802-service-rest.herokuapp.com/travelTime?km=300&autonomy=150&reload_time=60'
+    // Default options are marked with *
+    console.log("Ici")
+    await fetch(url, {
+        method: 'GET', // *GET, POST, PUT, DELETE, etc.
+        mode: 'same-origin', // no-cors, *cors, same-origin
+        cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
+        credentials: 'same-origin', // include, *same-origin, omit
+        headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin' : "*"
+        },
+        redirect: 'follow', // manual, *follow, error
+        referrerPolicy: 'no-referrer', // no-referrer, *no-referrer-when-downgrade, origin, origin-when-cross-origin, same-origin, strict-origin, strict-origin-when-cross-origin, unsafe-url
+        // body: JSON.stringify(data) // body data type must match "Content-Type" header
+    }).then(res => res.json())
+        .then(function (out) {
+                console.log("out : " + out)
+            }
+        ).catch(err => function (err) {
+            console.log("err : " + err)
+        });
+}
