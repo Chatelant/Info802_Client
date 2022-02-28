@@ -5,9 +5,10 @@ let params = {
     car: 0,
     roadDisplay: "",
     roadService: "",
+    polyline: "",
     start: "",
     end: "",
-    markers: [],
+    stations: [],
 }
 
 // JAVASCRIPT POUR LA DROPDOWN
@@ -43,8 +44,6 @@ async function selectCar() {
             refill: parseFloat(data[3]),
         }
     }
-
-    console.log(params.car);
 }
 
 // JAVASCRIPT POUR LA MAP
@@ -57,6 +56,13 @@ function initialize() {
         center: latlng
     }
     params.map = new google.maps.Map(document.getElementById('map'), mapOptions);
+
+    // Setup du trajet entre les deux points
+    params.polyline = new google.maps.Polyline({
+        path: [],
+        strokeColor: '#ff2481',
+        strokeWeight: 4
+    });
 }
 
 // Récupère les coordonnées LatLng à partir d'une adresse
@@ -72,10 +78,88 @@ async function getCoordinates(address) {
     return coordinates;
 }
 
+
+// TODO : à clean
+
 // Calcul et trace un trajet entre deux points
+// function getNewLatitude(latitude, distanceKm) {
+//     const meridionalRadiuskm = 40007.86;
+//     latitude = (latitude + distanceKm / (meridionalRadiuskm / 360));
+//     if (latitude > 90) return 180 - latitude;
+//     if (latitude < -90) return -(180 + latitude);
+//     return latitude;
+// }
+//
+// // TODO : NON FONCTIONNELS, A CORRIGER
+// function normalizedPoint(lat1, lon1, lat2, lon2, dist) {
+//     let constant = Math.PI / 180;
+//     let angular = dist / 6371;
+//     let a = Math.sin(0 * angular) / Math.sin(angular);
+//     let b = Math.sin(1 * angular) / Math.sin(angular);
+//     let x = a * Math.cos(lat1 * constant) * Math.cos(lon1 * constant) +
+//         b * Math.cos(lat2 * constant) * Math.cos(lon2 * constant);
+//     let y = a * Math.cos(lat1 * constant) * Math.sin(lon1 * constant) +
+//         b * Math.cos(lat2 * constant) * Math.sin(lon2 * constant);
+//     let z = a * Math.sin(lat1 * constant) + b * Math.sin(lat2 * constant);
+//     let lat3 = Math.atan2(z, Math.sqrt(x * x + y * y));
+//     let lon3 = Math.atan2(y, x);
+//     return {lat: lat3 / constant, lng: lon3 / constant};
+// }
+// // TODO : NON FONCTIONNELS, A CORRIGER
+function getPointPosition(lat1, lng1, lat2, lng2, dist) {
+    let D = Math.sqrt((lat2 - lat1) * (lat2 - lat1) + (lng2 - lng1) * (lng2 - lng1));
+    let lat3 = lat1 + dist / D * (lat2 - lat1);
+    let lng3 = lng1 + dist / D * (lng2 - lng1);
+    return {lat: lat3, lng: lng3};
+}
+
+// function getIntermediatePoint(startLatMicroDeg, startLonMicroDeg, endLatMicroDeg, endLonMicroDeg, t) // How much of the distance to use, from 0 through 1)
+// {
+// // Convert microdegrees to radians
+//     let alatRad = rad2deg(startLatMicroDeg);
+//     let alonRad = rad2deg(startLonMicroDeg);
+//     let blatRad = rad2deg(endLatMicroDeg);
+//     let blonRad = rad2deg(endLonMicroDeg);
+// // Calculate distance in longitude
+//     let dlon = blonRad - alonRad;
+// // Calculate common variables
+//     let alatRadSin = Math.sin(alatRad);
+//     let blatRadSin = Math.sin(blatRad);
+//     let alatRadCos = Math.cos(alatRad);
+//     let blatRadCos = Math.cos(blatRad);
+//     let dlonCos = Math.cos(dlon);
+// // Find distance from A to B
+//     let distance = Math.acos(alatRadSin * blatRadSin +
+//         alatRadCos * blatRadCos *
+//         dlonCos);
+// // Find bearing from A to B
+//     let bearing = Math.atan2(
+//         Math.sin(dlon) * blatRadCos,
+//         alatRadCos * blatRadSin -
+//         alatRadSin * blatRadCos * dlonCos);
+// // Find new point
+//     let angularDistance = distance * t;
+//     let angDistSin = Math.sin(angularDistance);
+//     let angDistCos = Math.cos(angularDistance);
+//     let xlatRad = Math.asin(alatRadSin * angDistCos +
+//         alatRadCos * angDistSin * Math.cos(bearing));
+//     let xlonRad = alonRad + Math.atan2(
+//         Math.sin(bearing) * angDistSin * alatRadCos,
+//         angDistCos - alatRadSin * Math.sin(xlatRad));
+// // Convert radians to microdegrees
+//     let xlat = Math.round(rad2deg(xlatRad));
+//     let xlon = Math.round(rad2deg(xlonRad));
+//     if (xlat > 90) xlat = 90;
+//     if (xlat < -90) xlat = -90;
+//     while (xlon > 180) xlon -= 360;
+//     while (xlon <= -180) xlon += 360;
+//     return  {lat: xlat, lng: xlon};
+// }
+
+// Trouve et trace la route entre les 2 points donnés par l'utilisateur
 async function setRoute() {
     // Reset les paramètres de la carte
-    if (params.markers !== []) params.markers = []
+    params.stations = []
     if (params.roadDisplay) params.roadDisplay.setMap(null);
 
     // Trouve la position du point de départ en LatLng
@@ -86,40 +170,99 @@ async function setRoute() {
     let addressArrivee = document.getElementById('addressArrivee').value;
     params.end = await getCoordinates(addressArrivee);
 
-    // TODO : fonction qui retourne toutes les stations où s'arrêter pendant le voyage
-    // setStationOnRoad();
+    // Reset la liste des marqueurs
+    for (let i = 0; i < params.stations.length; i++) {
+        params.stations[i].setMap(null);
+    }
 
-    // Setup du trajet entre les deux points
-    let start = new google.maps.LatLng(params.start);
-    let end = new google.maps.LatLng(params.end);
-    let request = {
-        origin: start,
-        destination: end,
-        travelMode: google.maps.TravelMode.DRIVING
-    };
+    if (params.car === "0") {
+        alert("Veuillez sélectionner une voiture");
+    } else {
+        let dist = 0; // Distance entre le départ et la station trouvée
+        let distMax = getDistanceFromLatLonInKm(params.start.lat(), params.start.lng(), params.end.lat(), params.end.lng()); // Distance entre le départ et l'arrivée
 
-    params.roadService = new google.maps.DirectionsService();
-    params.roadDisplay = new google.maps.DirectionsRenderer();
-    let Center = new google.maps.LatLng(18.210885, -67.140884);
-    let properties = {
-        center: Center,
-        zoom: 20,
-        mapTypeId: google.maps.MapTypeId.SATELLITE
-    };
+        let unit = params.car.autonomy / 100; // unité de distance entre le point de départ et d'arrivée
+        let lat = params.start.lat();
+        let lng = params.start.lng();
 
-    // Affichage sur la carte
-    params.roadDisplay.setMap(params.map);
-    params.roadService.route(request, function (result, status) {
-        if (status === google.maps.DirectionsStatus.OK) {
-            params.roadDisplay.setDirections(result);
-        } else {
-            alert("couldn't get directions:" + status);
+        while (dist < distMax) {
+            // TODO : PROBLEME : Résultat incorrect, point toujours trop loin
+            let point = getPointPosition(lat, lng, params.end.lat(), params.end.lng(), unit);
+            // let point = getIntermediatePoint(lat, lng, params.end.lat(), params.end.lng(), unit);
+
+            lat = point.lat;
+            lng = point.lng;
+            let ray = 10;
+            let station = await setStationOnRoad(lat, lng, ray); // Trouve la station la plus proche du point donné
+
+            dist = getDistanceFromLatLonInKm(params.start.lat(), params.start.lng(), lat, lng);
+
+            // Vérifie qu'on a trouvé une station, qu'on ne dépasse pas le nb de waypoints autorisé
+            // et que la station trouvée n'est pas plus loin que la destination finale
+            if (station !== undefined && params.stations.length < 25 && dist < distMax) {
+                // drawMarkerStation(station.fields.ad_station, station.fields.ylatitude, station.fields.xlongitude);
+                params.stations.push({
+                    location: station.fields.ad_station,
+                    stopover: true,
+                });
+            }
         }
-    });
 
-    console.log(params.roadDisplay);
+        // Calcul et traçage du trajet
+        let request = {
+            origin: new google.maps.LatLng(params.start),
+            waypoints: params.stations,
+            destination: new google.maps.LatLng(params.end),
+            travelMode: google.maps.TravelMode.DRIVING
+        };
+
+        params.roadService = new google.maps.DirectionsService();
+        params.roadDisplay = new google.maps.DirectionsRenderer();
+        let Center = new google.maps.LatLng(18.210885, -67.140884);
+        let properties = {
+            center: Center,
+            zoom: 20,
+            mapTypeId: google.maps.MapTypeId.SATELLITE
+        };
+
+        // Affichage sur la carte
+        params.roadDisplay.setMap(params.map);
+        params.roadService.route(request, function (response, status) {
+            if (status === google.maps.DirectionsStatus.OK) {
+                params.polyline.setPath([]);
+                let bounds = new google.maps.LatLngBounds();
+                startLocation = new Object();
+                endLocation = new Object();
+                params.roadDisplay.setDirections(response);
+                // let route = response.routes[0];
+                // For each route, display summary information.
+                // let path = response.routes[0].overview_path;
+                let legs = response.routes[0].legs;
+                for (let i = 0; i < legs.length; i++) {
+                    if (i === 0) {
+                        startLocation.latlng = legs[i].start_location;
+                        startLocation.address = legs[i].start_address;
+                    }
+                    endLocation.latlng = legs[i].end_location;
+                    endLocation.address = legs[i].end_address;
+                    let steps = legs[i].steps;
+                    for (let j = 0; j < steps.length; j++) {
+                        let nextSegment = steps[j].path;
+                        for (let k = 0; k < nextSegment.length; k++) {
+                            params.polyline.getPath().push(nextSegment[k]);
+                            bounds.extend(nextSegment[k]);
+                        }
+                    }
+                }
+                params.polyline.setMap(params.map);
+            } else {
+                alert("directions response " + status);
+            }
+        });
+    }
 }
 
+// Définit le polygone pour rechercher les stations autour d'un point (lat, lng) donné et une distance (dist)
 function setPolygon(lat, lng, dist) {
     let distLat = dist / 111; // distance en ° de lat entre le point de départ et la station la plus loin
     let distLng = dist / (111 * Math.cos(distLat)); // distance en ° de lat entre le point de départ et la station la plus loin
@@ -132,93 +275,72 @@ function setPolygon(lat, lng, dist) {
     return botleft + ", " + botright + ", " + top;
 }
 
-// Place les stations de rechargement proche du point de départ
-// TODO : modifier pour donner les stations par lesquelles il peut passer pendant son trajet
-function setStationOnRoad() {
-    let rows = 20; // nombre de résultat souhaité
-    // let km = params.car.autonomy; // kilomètres parcourables
-    let km = 30;
-    let rayon = 30; // rayon de recherche de station sur la route
-
-    // 1° de lat = 111 km
-    // 1° de long = 111 * cos(lat) km
-    let distLat = km / 111; // distance en ° de lat entre le point de départ et la station la plus loin
-    let distLng = km / (111 * Math.cos(distLat)); // distance en ° de lat entre le point de départ et la station la plus loin
-
-    let newLat = params.start.lat();
-    let newLng = params.start.lng();
-    let stop = false;
-    let i = 0;
-
-    while (stop !== true) {
-        if (params.start.lat() <= params.end.lat()) {
-            newLat += distLat;
-        } else {
-            newLat -= distLat;
-        }
-
-        if (params.start.lng() <= params.end.lng()) {
-            newLng += distLng;
-        } else {
-            newLng -= distLng;
-        }
-
-        // set Polygon pour trouver une station sur le chemin
-        let polygon = setPolygon(newLat, newLng, rayon);
-
-        // Call de l'API d'opendata pour récupérer les stations les plus proches
-        // let url = 'https://opendata.reseaux-energies.fr/api/records/1.0/search/?dataset=bornes-irve&q=&rows='
-        //     + rows
-        //     + '&facet=region&geofilter.polygon='
-        //     + polygon;
-        //
-        // fetch(url)
-        //     .then(res => res.json())
-        //     .then(function (out) {
-        //             // On regarde tous les résultats du JSON
-        //             console.log(out.records);
-        //             for (let i = 0; i < out.records.length; i++) {
-        //                 let station = out.records[i];
-        //                 drawMarkerStation(station.fields.ad_station, station.fields.ylatitude, station.fields.xlongitude);
-        //             }
-        //         }
-        //     ).catch(err => console.log("Aucune station de rechargement à proximité : " + err));
-
-        drawMarkerStation("Station", newLat, newLng);
-
-        i += 1;
-        if (i === 20) { stop = true; }
-    }
+// Fonctions pour calculer la distance en km entres 2 points à partir de leurs coordonnées LatLng
+function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
+    let R = 6371; // Radius of the earth in km
+    let dLat = deg2rad(lat2 - lat1);  // deg2rad below
+    let dLon = deg2rad(lon2 - lon1);
+    let a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) *
+        Math.sin(dLon / 2) * Math.sin(dLon / 2)
+    ;
+    let c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c; // Distance in km
 }
 
-// Dessine un marqueur de station de rechargement
-function drawMarkerStation(name, lat, lng) {
-    const svgMarker = {
-        path: "M10.453 14.016l6.563-6.609-1.406-1.406-5.156 5.203-2.063-2.109-1.406 1.406zM12 2.016q2.906 0 4.945 2.039t2.039 4.945q0 1.453-0.727 3.328t-1.758 3.516-2.039 3.070-1.711 2.273l-0.75 0.797q-0.281-0.328-0.75-0.867t-1.688-2.156-2.133-3.141-1.664-3.445-0.75-3.375q0-2.906 2.039-4.945t4.945-2.039z",
-        fillColor: "#2864b2",
-        fillOpacity: 1,
-        strokeWeight: 0,
-        rotation: 0,
-        scale: 2,
-        anchor: new google.maps.Point(15, 30),
-    };
+// Conversion degré à radiant
+function deg2rad(deg) {
+    return deg * (Math.PI / 180)
+}
 
-    let infowindow = new google.maps.InfoWindow();
-    let marker = new google.maps.Marker({
-        map: params.map,
-        position: new google.maps.LatLng(lat, lng),
-        title: name,
-        icon: svgMarker,
-    });
+// Conversion radiant à degré
+function rad2deg(rad) {
+    return rad * 180 / Math.PI;
+}
 
-    google.maps.event.addListener(marker, 'click', (function (marker) {
-        return function () {
-            infowindow.setContent(name);
-            infowindow.open(params.map, marker);
+// Retourne la station la plus proche d'un point (lat, lng) à partir d'une liste de stations
+function closestStation(lat, lng, stations) {
+    let closestStat = stations[0];
+    let distMin = getDistanceFromLatLonInKm(lat, lng, closestStat.fields.ylatitude, closestStat.fields.xlongitude);
+    let distance;
+    for (let i = 1; i < stations.length; i++) {
+        let station = stations[i];
+        distance = getDistanceFromLatLonInKm(lat, lng, station.fields.ylatitude, station.fields.xlongitude);
+        if (distance < distMin) {
+            closestStat = station;
         }
-    })(marker));
+    }
+    return closestStat;
+}
 
-    params.markers.push(marker);
+// Trouve une station de rechargement proche du point (lat, lng) dans un rayon donné
+async function setStationOnRoad(lat, lng, rayon) {
+    let station;
+    let rows = 30; // nombre de résultat souhaité
+
+    // set Polygon pour trouver une station sur le chemin
+    let polygon = setPolygon(lat, lng, rayon);
+
+    // Call de l'API d'opendata pour récupérer les stations les plus proches
+    let url = 'https://opendata.reseaux-energies.fr/api/records/1.0/search/?dataset=bornes-irve&q=&rows='
+        + rows
+        + '&facet=region&geofilter.polygon='
+        + polygon;
+
+    await fetch(url)
+        .then(res => res.json())
+        .then(function (out) {
+                // On regarde tous les résultats du JSON
+                station = closestStation(lat, lng, out.records);
+            }
+        ).catch(err => function (err) {
+            console.log("Aucune station trouvée, agrandissement du rayon de recherche : " + rayon);
+            rayon += 10;
+            station = setStationOnRoad(lat, lng, rayon);
+        });
+
+    return station;
 }
 
 // ----------
