@@ -1,4 +1,5 @@
 import json
+import os
 
 import zeep
 from flask import Flask, render_template, send_from_directory, request
@@ -32,4 +33,4 @@ def get_car_info():
 
 if __name__ == '__main__':
     cars = client.service.get_vehicles()
-    app.run(debug=True, use_debugger=False, use_reloader=False)
+    app.run(debug=True)  # Heroku server
