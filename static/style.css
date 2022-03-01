@@ -1,0 +1,35 @@
+html, body {
+    height: 100%;
+}
+
+html {
+    display: table;
+    margin: auto;
+}
+
+body {
+    display: table-cell;
+    vertical-align: middle;
+    text-align: center;
+}
+
+h1 {
+    text-align: center;
+}
+
+form {
+    /*margin-left: 5%;*/
+    display: inline-block;
+}
+
+.form-vehicle {
+    margin-bottom: 1%;
+}
+#button{
+    float: none;
+}
+
+#travelTime{
+    font-size: large;
+    margin: 1%;
+}

@@ -6,38 +6,51 @@
 
     <script src="https://maps.google.com/maps/api/js?key=AIzaSyAP319Lk4plsdJwM1y_u3snS3xpRvGC5yw"
             type="text/javascript"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
 </head>
 
 <body onload="initialize()">
 
-    <h1>Planifier un voyage en véhicule électrique</h1>
+<h1>Planifier un voyage en véhicule électrique</h1>
 
-    <form onSubmit="return false; // Returning false stops the page from reloading">
-        <div>
-            <label for="vehicle-select">Véhicule : </label>
-            <select name="vehicles" id="vehicle-select" required>
-                <option value="0" selected="selected">--Choisissez un modèle--</option>
-                {% for option in v_list %}
-                    <option value={{ option }}>{{ option }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        <hr/>
-        <div>
-            <label for="addressDepart">Départ :</label>
-            <input id="addressDepart" type="text" placeholder="adresse de départ" value="Rouen" required/>
-        </div>
-        <div>
-            <label for="addressArrivee">Destination :</label>
-            <input id="addressArrivee" type="text" placeholder="adresse de destination" value="Annecy" required/>
-        </div>
-        <div>
-            <input type="button" value="Chercher" onclick="setRoute()">
-        </div>
-    </form>
-    <div id="travelTime"></div>
-    <div id="map" style="width: 1200px; height: 700px;"></div>
+<form onSubmit="return false; // Returning false stops the page from reloading">
+    <table>
+        <tr>
+            <td class="form-vehicle"><label for="vehicle-select">Véhicule : </label></td>
+            <td class="form-vehicle">
+                <select name="vehicles" id="vehicle-select" required>
+                    <option value="0" selected="selected">--Choisissez un modèle--</option>
+                    {% for option in v_list %}
+                        <option value={{ option }}>{{ option }}</option>
+                    {% endfor %}
+                </select>
+            </td>
+        </tr>
+        <tr>
+            <td class="form-vehicle">
+                <label for="addressDepart">Départ :</label>
+            </td>
+            <td class="form-vehicle"><input id="addressDepart" type="text" placeholder="adresse de départ" value="Rouen"
+                                            required/>
+            </td>
+        </tr>
+        <tr class="form-vehicle">
+            <td><label for="addressArrivee">Destination :</label></td>
+            <td><input id="addressArrivee" type="text" placeholder="adresse de destination" value="Annecy" required/>
+            </td>
+        </tr>
 
-    <script src="{{ url_for('static', filename="js/index.js") }}"></script>
+        <tr class="form-vehicle">
+            <td></td>
+            <td id="button"><input type="button" value="Chercher" onclick="setRoute()">
+            </td>
+        </tr>
+    </table>
+</form>
+<div id="travelTime"></div>
+<div id="map" style="width: 1200px; height: 700px;"></div>
+
+<script src="{{ url_for('static', filename="js/index.js") }}"></script>
 </body>
 </html>
